@@ -1,0 +1,7 @@
+/* Linker script for the nRF52 - WITHOUT SOFT DEVICE */
+MEMORY
+{
+  /* NOTE K = KiBi = 1024 bytes */
+  FLASH : ORIGIN = 0x00000000, LENGTH = 1024K
+  RAM : ORIGIN = 0x20000000, LENGTH = 128K
+}
