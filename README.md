@@ -160,22 +160,34 @@ enum Target2HostMessage {
 
 ## Implementation order
 
-### FW
-- check that we can launch a RAM program w/o any serial port communication with the host
-  - try approach 2 in bootloader.behavior
-  - otherwise, try approach 1
+### FW - ramloader
+
+- [x] check that we can launch a RAM program w/o any serial port communication with the host
+  - [x] ~~try approach 2 in bootloader.behavior~~
+  - [x] otherwise, try approach 1 -> `cortex_m::asm::bootload` :thumbsup:
+
+- implement serial communication
+  - postcard + COBS
+- receive Record::Data frames, write those into RAM, continue with `bootload`
+
+- nice to have + cleanups
 
 ### App
 
-- start from `cortex-m-quickstart` template
-- start by *not* using `defmt`
+- [x] start from `cortex-m-quickstart` template
+- [x] start by *not* using `defmt`
 - nice to have: try to use `defmt`
 - nice to have: `xtask` to turn ELF into .hex
-- double-check: we can fake "FLASH" which will actually be in real HW RAM (Jorge says this works)
+- [x] double-check: we can fake "FLASH" which will actually be in real HW RAM 
 
 ### Host tool
 
-- requires: ELF located in RAM
+- [x] requires: ELF located in RAM (`app`)
 - turn ELF into `.hex` using `rust-objcopy` (manually)
 - use the `ihex` crate to make sure we can read out the data (`Record::Data`)
   - verify that `Record::Data.offset` is absolute RAM address
+
+- set up postcard + COBS
+- take .hex file as argument; parse that into Record::Data frames; send those to target
+
+- nice to have + cleanups
