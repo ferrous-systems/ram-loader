@@ -191,3 +191,11 @@ enum Target2HostMessage {
 - take .hex file as argument; parse that into Record::Data frames; send those to target
 
 - nice to have + cleanups
+
+## Thing to test
+
+- `app` lications
+  - interrupts work (if they don't work = didn't set VTOR)
+  - `.data` variables work
+    - these are initialized on startup by `cortex-m-rt`
+    - initial values are in Flash (normally), at Load Memory Address (not Virtual Memory Address)
