@@ -168,7 +168,9 @@ enum Target2HostMessage {
 
 - [x] implement serial communication
   - [x] postcard + COBS
-- receive Record::Data frames, write those into RAM, continue with `bootload`
+- ~~receive Record::Data frames, write those into RAM, continue with `bootload`~~
+- [x] handle `Write` command
+- [x] handle `Execute` command
 
 - nice to have + cleanups
 
@@ -190,12 +192,12 @@ enum Target2HostMessage {
 - [x] set up postcard + COBS
 - ~~take .hex file as argument; parse that into Record::Data frames; send those to target~~
 
-- take ELF file as argument
-- extract loadable data from ELF
-- chunk the data
-- send the chunks over serial port
-- ???
-- :tada:
+- [x] take ELF file as argument
+- [x] extract loadable data from ELF
+- [x] chunk the data
+- [x] send the chunks over serial port
+- [x] send Execute command
+- [x] it worked! :tada:
 
 - nice to have + cleanups
 
@@ -206,3 +208,18 @@ enum Target2HostMessage {
   - `.data` variables work
     - these are initialized on startup by `cortex-m-rt`
     - initial values are in Flash (normally), at Load Memory Address (not Virtual Memory Address)
+
+## TODOs
+
+- create blanks, skeleton project, instructions
+- NOTE that board must be reset to flash a new program
+
+## Nice to have & cleanups
+
+- fix bug in flip-link and use flip-link in `ram-loader` FW
+- add error message to `host-tool` for `InvalidAddress` response
+- make `payload_size` larger
+- use `defmt` in `app` FW
+- refactor `ram-loader` `main` into subfunctions
+- LED indicator that ramloader is waiting for a new program
+- clean up / remove debug statements (or put them behind env_logger)
