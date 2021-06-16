@@ -1,6 +1,5 @@
 #![cfg_attr(not(test), no_std)]
 
-use defmt::Format;
 use serde_derive::{Deserialize, Serialize};
 
 pub const COBS_DELIMITER: u8 = 0;
@@ -9,14 +8,14 @@ pub const POSTCARD_BUFFER_SIZE: usize = 256;
 // TODO make this larger
 pub const POSTCARD_PAYLOAD_SIZE: usize = 3;
 
-#[derive(Debug, Format, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum Host2TargetMessage<'a> {
     Ping,
     Write { start_address: u32, data: &'a [u8] },
     Execute,
 }
 
-#[derive(Debug, Format, Deserialize, PartialEq, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub enum Target2HostMessage {
     InvalidAddress,
     Pong,

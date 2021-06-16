@@ -224,3 +224,4 @@ enum Target2HostMessage {
 - LED indicator that ramloader is waiting for a new program
 - clean up / remove debug statements (or put them behind env_logger)
 - `host-tool` better argument handling (maybe use `clap` / `structopt`)
+- add explanatory comments to the code
