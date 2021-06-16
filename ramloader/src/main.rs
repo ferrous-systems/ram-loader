@@ -40,21 +40,15 @@ fn main() -> ! {
     let mut serial_rx_buffer = [0; 1];
 
     let mut cobs_buffer = Vec::<_, { common::POSTCARD_BUFFER_SIZE }>::new();
-    defmt::info!("ready");
+    defmt::info!("ready to receive firmware image");
     loop {
-        // defmt::info!("blocking single-byte read");
         uarte.read(&mut serial_rx_buffer).unwrap();
         let byte = serial_rx_buffer[0];
         cobs_buffer.push(byte).unwrap();
 
         if byte == common::COBS_DELIMITER {
-            // if byte == common::COBS_DELIMITER {
-            defmt::info!("found delimiter");
-            defmt::dbg!(&*cobs_buffer);
-
             let host2target_message: Host2TargetMessage =
                 postcard::from_bytes_cobs(&mut cobs_buffer).unwrap();
-            defmt::dbg!(&host2target_message);
 
             let response = match host2target_message {
                 Host2TargetMessage::Ping => Target2HostMessage::Pong,
@@ -68,7 +62,6 @@ fn main() -> ! {
                         let dst = start_address as usize as *mut u8;
                         let len = data.len();
 
-                        defmt::dbg!(src, dst, len);
                         unsafe {
                             core::ptr::copy_nonoverlapping(src, dst, len);
                         }
@@ -80,6 +73,8 @@ fn main() -> ! {
                 }
 
                 Host2TargetMessage::Execute => {
+                    defmt::info!("booting into new firmware...");
+
                     // write to VTOR
                     unsafe {
                         core_periphals.SCB.vtor.write(RAM_PROGRAM_START_ADDRESS);
@@ -93,8 +88,6 @@ fn main() -> ! {
             };
 
             let response_bytes = postcard::to_vec_cobs::<_, 256>(&response).unwrap();
-
-            defmt::dbg!(&*response_bytes);
 
             uarte.write(&response_bytes).unwrap();
             cobs_buffer.clear();
@@ -119,7 +112,6 @@ fn launch_program(periph: cortex_m::Peripherals) {
             let len = VECTOR_TABLE.len();
 
             defmt::info!(".vector_table");
-            defmt::dbg!(src, dst, len);
             core::ptr::copy_nonoverlapping(src, dst, len);
         }
 
@@ -130,7 +122,6 @@ fn launch_program(periph: cortex_m::Peripherals) {
             let len = TEXT.len();
 
             defmt::info!(".text");
-            defmt::dbg!(src, dst, len);
             core::ptr::copy_nonoverlapping(src, dst, len);
         }
 

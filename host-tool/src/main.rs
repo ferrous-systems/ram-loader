@@ -13,6 +13,7 @@ use object::{
     Endianness,
 };
 use serialport::SerialPort;
+use std::io::Write;
 
 const TIMEOUT: Duration = Duration::from_secs(5);
 const BAUD_RATE: u32 = 115_200;
@@ -25,7 +26,7 @@ fn main() -> color_eyre::Result<()> {
             .ok_or_else(|| eyre!("expected one argument"))?,
     );
 
-    dbg!(&file_path);
+    println!("Sending ELF file at {:?} to target", &file_path);
 
     let segments = extract_loadable_segments(file_path)?;
 
@@ -43,11 +44,15 @@ fn main() -> color_eyre::Result<()> {
 
             // TODO emit error message (specially for invalid address)
             assert_eq!(response, Target2HostMessage::WriteOk);
+
+            // rudimentary progress indicator
+            print!(".");
+            std::io::stdout().flush()?;
         }
     }
 
     conn.send(Host2TargetMessage::Execute)?;
-    println!("program loaded");
+    println!("\nprogram loaded");
 
     Ok(())
 }
@@ -109,7 +114,7 @@ impl TargetConn {
 
         let port_info =
             port_info.ok_or_else(|| eyre!("serial port `{:04x}:{:04x}` not found", VID, PID))?;
-        let mut port = serialport::new(dbg!(port_info.port_name), BAUD_RATE).open()?;
+        let mut port = serialport::new(port_info.port_name, BAUD_RATE).open()?;
         port.set_timeout(TIMEOUT)?;
 
         let writer = port.try_clone()?;
@@ -128,15 +133,12 @@ impl TargetConn {
         self.reader
             .read_until(common::COBS_DELIMITER, &mut response_buffer)?;
 
-        dbg!(&response_buffer);
-
         let response: Target2HostMessage = postcard::from_bytes_cobs(&mut response_buffer)?;
         Ok(response)
     }
 
     fn send(&mut self, request: Host2TargetMessage) -> color_eyre::Result<()> {
         let request_bytes = postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&request)?;
-        dbg!(request_bytes.len());
 
         self.writer.write_all(&request_bytes)?;
         Ok(())
