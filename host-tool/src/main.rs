@@ -31,25 +31,33 @@ fn main() -> color_eyre::Result<()> {
     let segments = extract_loadable_segments(file_path)?;
 
     let mut conn = TargetConn::new()?;
-    for segment in &segments {
-        let mut start_address = segment.start_address;
-        for chunk in segment.data.chunks(common::POSTCARD_PAYLOAD_SIZE) {
-            let message = Host2TargetMessage::Write {
-                start_address,
-                data: chunk,
-            };
-            start_address += chunk.len() as u32;
+    // for segment in &segments {
+    //     let mut start_address = segment.start_address;
+    //     for chunk in segment.data.chunks(common::POSTCARD_PAYLOAD_SIZE) {
+    //         let message = Host2TargetMessage::Write {
+    //             start_address,
+    //             data: chunk,
+    //         };
+    //         start_address += chunk.len() as u32;
 
-            let response = conn.request(message)?;
+    //         let response = conn.request(message)?;
 
-            assert_eq!(response, Target2HostMessage::WriteOk);
+    //         assert_eq!(response, Target2HostMessage::WriteOk);
 
-            dbg!(segment);
-        }
-    }
+    //         dbg!(segment);
+    //     }
+    // }
 
-    let response = conn.request(Host2TargetMessage::Ping)?;
+    let message = Host2TargetMessage::Write {
+        start_address: 0x0000_0000,
+        data: &[1],
+    };
+
+    let response = conn.request(message)?;
     dbg!(response);
+
+    // let response = conn.request(Host2TargetMessage::Ping)?;
+    // dbg!(response);
 
     Ok(())
 }

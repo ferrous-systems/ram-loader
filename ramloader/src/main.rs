@@ -1,10 +1,16 @@
 #![no_main]
 #![no_std]
 
+use core::ops::Range;
+
 use common::{Host2TargetMessage, Target2HostMessage};
 use heapless::Vec;
 use nrf52840_hal::{gpio, uarte, Uarte};
 use ramloader as _; // global logger + panicking-behavior + memory layout
+
+const RAM_PROGRAM_START_ADDRESS: u32 = 0x2002_0000;
+const RAM_PROGRAM_END_ADDRESS: u32 = 0x2004_0000;
+const VALID_RAM_PROGRAM_ADDRESS: Range<u32> = RAM_PROGRAM_START_ADDRESS..0x2000_0000;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -54,12 +60,16 @@ fn main() -> ! {
                 Host2TargetMessage::Ping => Target2HostMessage::Pong,
 
                 Host2TargetMessage::Write {
-                    start_address: _,
+                    start_address,
                     data: _,
                 } => {
-                    // TODO check `start_address` is in valid range
-                    // TODO `data` to RAM
-                    Target2HostMessage::WriteOk
+                    if VALID_RAM_PROGRAM_ADDRESS.contains(&start_address) {
+                        // TODO write `data` to RAM
+                        Target2HostMessage::WriteOk
+                    } else {
+                        defmt::error!("address `{}` is invalid", start_address);
+                        Target2HostMessage::InvalidAddress
+                    }
                 }
             };
 

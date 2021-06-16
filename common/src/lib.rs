@@ -17,8 +17,9 @@ pub enum Host2TargetMessage<'a> {
 
 #[derive(Debug, Format, Deserialize, PartialEq, Serialize)]
 pub enum Target2HostMessage {
-    WriteOk,
+    InvalidAddress,
     Pong,
+    WriteOk,
 }
 
 #[cfg(test)]
