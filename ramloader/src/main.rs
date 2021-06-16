@@ -34,7 +34,7 @@ fn main() -> ! {
         uart0,
         cdc_pins,
         uarte::Parity::EXCLUDED,
-        uarte::Baudrate::BAUD9600,
+        uarte::Baudrate::BAUD115200,
     );
 
     let mut serial_rx_buffer = [0; 1];

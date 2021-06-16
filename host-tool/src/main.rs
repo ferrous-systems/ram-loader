@@ -15,8 +15,8 @@ use object::{
 use serialport::SerialPort;
 
 const TIMEOUT: Duration = Duration::from_secs(5);
-const BAUD_RATE: u32 = 9_600;
-// const BAUD_RATE: u32 = 115_200;
+// const BAUD_RATE: u32 = 9_600;
+const BAUD_RATE: u32 = 115_200;
 
 fn main() -> color_eyre::Result<()> {
     // TODO doesn't reject 2+ arguments
