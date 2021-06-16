@@ -40,14 +40,15 @@ fn main() -> color_eyre::Result<()> {
             };
             start_address += chunk.len() as u32;
 
-            let response = conn.request(message)?;
+            let response = conn.request_response(message)?;
 
+            // TODO emit error message (specially for invalid address)
             assert_eq!(response, Target2HostMessage::WriteOk);
         }
     }
 
-    let response = conn.request(Host2TargetMessage::Ping)?;
-    dbg!(response);
+    conn.send(Host2TargetMessage::Execute)?;
+    println!("program loaded");
 
     Ok(())
 }
@@ -102,21 +103,27 @@ impl TargetConn {
         Ok(Self { writer, reader })
     }
 
-    fn request(&mut self, request: Host2TargetMessage) -> color_eyre::Result<Target2HostMessage> {
-        let request_bytes = postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&request)?;
-        dbg!(request_bytes.len());
-
-        self.writer.write_all(&request_bytes)?;
-        println!("did write");
+    fn request_response(
+        &mut self,
+        request: Host2TargetMessage,
+    ) -> color_eyre::Result<Target2HostMessage> {
+        self.send(request)?;
 
         let mut response_buffer = vec![];
         self.reader
             .read_until(common::COBS_DELIMITER, &mut response_buffer)?;
-        println!("did read");
 
         dbg!(&response_buffer);
 
         let response: Target2HostMessage = postcard::from_bytes_cobs(&mut response_buffer)?;
         Ok(response)
+    }
+
+    fn send(&mut self, request: Host2TargetMessage) -> color_eyre::Result<()> {
+        let request_bytes = postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&request)?;
+        dbg!(request_bytes.len());
+
+        self.writer.write_all(&request_bytes)?;
+        Ok(())
     }
 }

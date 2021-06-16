@@ -14,7 +14,7 @@ const VALID_RAM_PROGRAM_ADDRESS: Range<u32> = RAM_PROGRAM_START_ADDRESS..RAM_PRO
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    // let core_periphals = cortex_m::Peripherals::take().unwrap();
+    let core_periphals = cortex_m::Peripherals::take().unwrap();
     let p = nrf52840_hal::pac::Peripherals::take().unwrap();
 
     let (uart0, cdc_pins) = {
@@ -77,6 +77,18 @@ fn main() -> ! {
                         defmt::error!("address `{}` is invalid", start_address);
                         Target2HostMessage::InvalidAddress
                     }
+                }
+
+                Host2TargetMessage::Execute => {
+                    // write to VTOR
+                    unsafe {
+                        core_periphals.SCB.vtor.write(RAM_PROGRAM_START_ADDRESS);
+                    }
+
+                    // flush defmt messages
+                    cortex_m::asm::delay(1_000_000);
+
+                    unsafe { cortex_m::asm::bootload(RAM_PROGRAM_START_ADDRESS as *const u32) }
                 }
             };
 

@@ -13,6 +13,7 @@ pub const POSTCARD_PAYLOAD_SIZE: usize = 3;
 pub enum Host2TargetMessage<'a> {
     Ping,
     Write { start_address: u32, data: &'a [u8] },
+    Execute,
 }
 
 #[derive(Debug, Format, Deserialize, PartialEq, Serialize)]
