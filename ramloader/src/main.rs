@@ -1,6 +1,8 @@
 #![no_main]
 #![no_std]
 
+use common::{Host2TargetMessage, Target2HostMessage};
+use heapless::Vec;
 use nrf52840_hal::{gpio, uarte, Uarte};
 use ramloader as _; // global logger + panicking-behavior + memory layout
 
@@ -31,17 +33,39 @@ fn main() -> ! {
         uarte::Baudrate::BAUD115200,
     );
 
-    let mut request_buffer = [0];
+    let mut serial_rx_buffer = [0];
 
+    let mut cobs_buffer = Vec::<_, 256>::new();
     // defmt::info!("did not crash");
     // ramloader::exit()
     loop {
-        defmt::info!("blocking read");
-        uarte.read(&mut request_buffer).unwrap();
+        const COBS_DELIMITER: u8 = 0;
+        defmt::info!("blocking single-byte read");
+        uarte.read(&mut serial_rx_buffer).unwrap();
 
-        defmt::dbg!(request_buffer);
+        let byte = serial_rx_buffer[0];
 
-        uarte.write(&request_buffer).unwrap();
+        cobs_buffer.push(byte).unwrap();
+        if byte == COBS_DELIMITER {
+            // TODO parse cobs frame
+            defmt::dbg!(&*cobs_buffer);
+            let host2target_message: Host2TargetMessage =
+                postcard::from_bytes_cobs(&mut cobs_buffer).unwrap();
+            defmt::dbg!(&host2target_message);
+
+            match host2target_message {
+                Host2TargetMessage::Ping => {
+                    let response = Target2HostMessage::Pong;
+                    let response_bytes = postcard::to_vec_cobs::<_, 256>(&response).unwrap();
+
+                    defmt::dbg!(&*response_bytes);
+
+                    uarte.write(&response_bytes).unwrap();
+                }
+            }
+
+            cobs_buffer.clear();
+        }
     }
 }
 

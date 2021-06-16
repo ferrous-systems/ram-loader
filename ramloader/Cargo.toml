@@ -4,12 +4,15 @@ edition = "2018"
 version = "0.1.0"
 
 [dependencies]
+common = { path = "../common" }
 cortex-m = "0.7.1"
 cortex-m-rt = "0.6.13"
 defmt = "0.2.0"
 defmt-rtt = "0.2.0"
-panic-probe = { version = "0.2.0", features = ["print-defmt"] }
+heapless = "0.7.1"
 nrf52840-hal = "0.12.2"
+panic-probe = { version = "0.2.0", features = ["print-defmt"] }
+postcard = "0.7.0"
 
 [features]
 # set logging levels here

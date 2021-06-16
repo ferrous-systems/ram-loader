@@ -1,0 +1,9 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+defmt = "0.2.2"
+serde = { version = "1.0.126", default-features = false }
+serde_derive = "1.0.126"
