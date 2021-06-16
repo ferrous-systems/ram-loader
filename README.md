@@ -211,7 +211,6 @@ enum Target2HostMessage {
 
 ## TODOs
 
-- open serial port using PID:VID pair
 - create blanks, skeleton project, instructions
 - NOTE that board must be reset to flash a new program
 

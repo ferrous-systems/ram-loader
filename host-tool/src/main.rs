@@ -92,8 +92,24 @@ struct TargetConn {
 impl TargetConn {
     fn new() -> color_eyre::Result<Self> {
         // TODO use VID PID to find correct port
-        const PORT: &str = "/dev/ttyACM0";
-        let mut port = serialport::new(PORT, BAUD_RATE).open()?;
+        const VID: u16 = 0x1366;
+        const PID: u16 = 0x1015;
+
+        let mut port_info = None;
+        for port in serialport::available_ports()? {
+            match &port.port_type {
+                serialport::SerialPortType::UsbPort(info) => {
+                    if info.vid == VID && info.pid == PID {
+                        port_info = Some(port);
+                    }
+                }
+                _ => continue,
+            }
+        }
+
+        let port_info =
+            port_info.ok_or_else(|| eyre!("serial port `{:04x}:{:04x}` not found", VID, PID))?;
+        let mut port = serialport::new(dbg!(port_info.port_name), BAUD_RATE).open()?;
         port.set_timeout(TIMEOUT)?;
 
         let writer = port.try_clone()?;
