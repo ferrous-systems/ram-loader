@@ -6,6 +6,7 @@ edition = "2018"
 [dependencies]
 color-eyre = "0.5.11"
 common = { path = "../common" }
+object = "0.25.3"
 serialport = "4.0.1"
 
 [dependencies.postcard]

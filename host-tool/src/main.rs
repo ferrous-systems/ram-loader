@@ -1,23 +1,76 @@
 use std::{
+    env, fs,
     io::{BufRead, BufReader},
+    path::PathBuf,
     time::Duration,
 };
 
+use color_eyre::eyre::eyre;
 use common::{Host2TargetMessage, Target2HostMessage};
+use object::{
+    elf::{FileHeader32, PT_LOAD},
+    read::elf::{FileHeader, ProgramHeader},
+    Endianness,
+};
 use serialport::SerialPort;
 
 const TIMEOUT: Duration = Duration::from_secs(5);
 const BAUD_RATE: u32 = 115_200;
 
 fn main() -> color_eyre::Result<()> {
-    let mut conn = TargetConn::new()?;
+    // TODO doesn't reject 2+ arguments
+    let file_path = PathBuf::from(
+        env::args()
+            .nth(1)
+            .ok_or_else(|| eyre!("expected one argument"))?,
+    );
 
-    let response = conn.request(Host2TargetMessage::Ping)?;
-    dbg!(response);
+    dbg!(&file_path);
+
+    let segments = extract_loadable_segments(file_path)?;
+
+    for segment in &segments {
+        dbg!(segment);
+    }
+    dbg!(segments.len());
+
+    let mut conn = TargetConn::new()?;
     let response = conn.request(Host2TargetMessage::Ping)?;
     dbg!(response);
 
     Ok(())
+}
+
+/// Loadable segment
+#[derive(Debug)]
+struct Segment {
+    start_address: u32,
+    data: Vec<u8>,
+}
+
+fn extract_loadable_segments(file_path: PathBuf) -> Result<Vec<Segment>, color_eyre::Report> {
+    let bytes = fs::read(file_path)?;
+    let file_header = FileHeader32::<Endianness>::parse(&*bytes)?;
+    let endianness = file_header.endian()?;
+
+    let mut segments = vec![];
+    for program_header in file_header.program_headers(endianness, &*bytes)? {
+        let p_type = program_header.p_type(endianness);
+
+        if p_type == PT_LOAD {
+            let p_paddr = program_header.p_paddr(endianness);
+            let data = program_header
+                .data(endianness, &*bytes)
+                .map_err(|__| eyre!("cannot retreive program header data"))?;
+
+            segments.push(Segment {
+                start_address: p_paddr,
+                data: data.to_vec(),
+            });
+        }
+    }
+
+    Ok(segments)
 }
 
 struct TargetConn {
@@ -39,8 +92,6 @@ impl TargetConn {
     }
 
     fn request(&mut self, request: Host2TargetMessage) -> color_eyre::Result<Target2HostMessage> {
-        const COBS_DELIMITER: u8 = 0;
-
         let request_bytes = postcard::to_stdvec_cobs(&request)?;
         dbg!(&request_bytes);
 
@@ -48,7 +99,7 @@ impl TargetConn {
 
         let mut response_buffer = vec![];
         self.reader
-            .read_until(COBS_DELIMITER, &mut response_buffer)?;
+            .read_until(common::COBS_DELIMITER, &mut response_buffer)?;
 
         dbg!(&response_buffer);
 

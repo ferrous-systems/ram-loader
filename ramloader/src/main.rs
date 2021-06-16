@@ -39,14 +39,13 @@ fn main() -> ! {
     // defmt::info!("did not crash");
     // ramloader::exit()
     loop {
-        const COBS_DELIMITER: u8 = 0;
         defmt::info!("blocking single-byte read");
         uarte.read(&mut serial_rx_buffer).unwrap();
 
         let byte = serial_rx_buffer[0];
 
         cobs_buffer.push(byte).unwrap();
-        if byte == COBS_DELIMITER {
+        if byte == common::COBS_DELIMITER {
             // TODO parse cobs frame
             defmt::dbg!(&*cobs_buffer);
             let host2target_message: Host2TargetMessage =

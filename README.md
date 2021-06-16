@@ -166,8 +166,8 @@ enum Target2HostMessage {
   - [x] ~~try approach 2 in bootloader.behavior~~
   - [x] otherwise, try approach 1 -> `cortex_m::asm::bootload` :thumbsup:
 
-- implement serial communication
-  - postcard + COBS
+- [x] implement serial communication
+  - [x] postcard + COBS
 - receive Record::Data frames, write those into RAM, continue with `bootload`
 
 - nice to have + cleanups
@@ -183,12 +183,19 @@ enum Target2HostMessage {
 ### Host tool
 
 - [x] requires: ELF located in RAM (`app`)
-- turn ELF into `.hex` using `rust-objcopy` (manually)
-- use the `ihex` crate to make sure we can read out the data (`Record::Data`)
-  - verify that `Record::Data.offset` is absolute RAM address
+- ~~turn ELF into `.hex` using `rust-objcopy` (manually)~~
+- ~~use the `ihex` crate to make sure we can read out the data (`Record::Data`)~~
+  - ~~verify that `Record::Data.offset` is absolute RAM address~~
 
-- set up postcard + COBS
-- take .hex file as argument; parse that into Record::Data frames; send those to target
+- [x] set up postcard + COBS
+- ~~take .hex file as argument; parse that into Record::Data frames; send those to target~~
+
+- take ELF file as argument
+- extract loadable data from ELF
+- chunk the data
+- send the chunks over serial port
+- ???
+- :tada:
 
 - nice to have + cleanups
 
