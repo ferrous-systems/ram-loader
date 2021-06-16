@@ -15,7 +15,8 @@ use object::{
 use serialport::SerialPort;
 
 const TIMEOUT: Duration = Duration::from_secs(5);
-const BAUD_RATE: u32 = 115_200;
+const BAUD_RATE: u32 = 9_600;
+// const BAUD_RATE: u32 = 115_200;
 
 fn main() -> color_eyre::Result<()> {
     // TODO doesn't reject 2+ arguments
@@ -29,12 +30,24 @@ fn main() -> color_eyre::Result<()> {
 
     let segments = extract_loadable_segments(file_path)?;
 
-    for segment in &segments {
-        dbg!(segment);
-    }
-    dbg!(segments.len());
-
     let mut conn = TargetConn::new()?;
+    for segment in &segments {
+        let mut start_address = segment.start_address;
+        for chunk in segment.data.chunks(common::POSTCARD_PAYLOAD_SIZE) {
+            let message = Host2TargetMessage::Write {
+                start_address,
+                data: chunk,
+            };
+            start_address += chunk.len() as u32;
+
+            let response = conn.request(message)?;
+
+            assert_eq!(response, Target2HostMessage::WriteOk);
+
+            dbg!(segment);
+        }
+    }
+
     let response = conn.request(Host2TargetMessage::Ping)?;
     dbg!(response);
 
@@ -92,14 +105,17 @@ impl TargetConn {
     }
 
     fn request(&mut self, request: Host2TargetMessage) -> color_eyre::Result<Target2HostMessage> {
-        let request_bytes = postcard::to_stdvec_cobs(&request)?;
-        dbg!(&request_bytes);
+        let request_bytes = postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&request)?;
+        dbg!(&request_bytes[..std::cmp::min(7, request_bytes.len())]);
+        dbg!(request_bytes.len());
 
         self.writer.write_all(&request_bytes)?;
+        println!("did write");
 
         let mut response_buffer = vec![];
         self.reader
             .read_until(common::COBS_DELIMITER, &mut response_buffer)?;
+        println!("did read");
 
         dbg!(&response_buffer);
 

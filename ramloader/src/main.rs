@@ -20,8 +20,6 @@ fn main() -> ! {
                 rxd: p0.p0_08.into_floating_input().degrade(),
                 cts: None,
                 rts: None,
-                // cts: Some(p0.p0_07.into_floating_input().degrade()),
-                // rts: Some(p0.p0_05.into_push_pull_output(gpio::Level::High).degrade()),
             },
         )
     };
@@ -30,39 +28,46 @@ fn main() -> ! {
         uart0,
         cdc_pins,
         uarte::Parity::EXCLUDED,
-        uarte::Baudrate::BAUD115200,
+        uarte::Baudrate::BAUD9600,
     );
 
-    let mut serial_rx_buffer = [0];
+    let mut serial_rx_buffer = [0; 1];
 
-    let mut cobs_buffer = Vec::<_, 256>::new();
-    // defmt::info!("did not crash");
-    // ramloader::exit()
+    let mut cobs_buffer = Vec::<_, { common::POSTCARD_BUFFER_SIZE }>::new();
+    defmt::info!("ready");
     loop {
-        defmt::info!("blocking single-byte read");
+        // defmt::info!("blocking single-byte read");
         uarte.read(&mut serial_rx_buffer).unwrap();
-
         let byte = serial_rx_buffer[0];
-
         cobs_buffer.push(byte).unwrap();
+
         if byte == common::COBS_DELIMITER {
-            // TODO parse cobs frame
+            // if byte == common::COBS_DELIMITER {
+            defmt::info!("found delimiter");
             defmt::dbg!(&*cobs_buffer);
+
             let host2target_message: Host2TargetMessage =
                 postcard::from_bytes_cobs(&mut cobs_buffer).unwrap();
             defmt::dbg!(&host2target_message);
 
-            match host2target_message {
-                Host2TargetMessage::Ping => {
-                    let response = Target2HostMessage::Pong;
-                    let response_bytes = postcard::to_vec_cobs::<_, 256>(&response).unwrap();
+            let response = match host2target_message {
+                Host2TargetMessage::Ping => Target2HostMessage::Pong,
 
-                    defmt::dbg!(&*response_bytes);
-
-                    uarte.write(&response_bytes).unwrap();
+                Host2TargetMessage::Write {
+                    start_address: _,
+                    data: _,
+                } => {
+                    // TODO check `start_address` is in valid range
+                    // TODO `data` to RAM
+                    Target2HostMessage::WriteOk
                 }
-            }
+            };
 
+            let response_bytes = postcard::to_vec_cobs::<_, 256>(&response).unwrap();
+
+            defmt::dbg!(&*response_bytes);
+
+            uarte.write(&response_bytes).unwrap();
             cobs_buffer.clear();
         }
     }

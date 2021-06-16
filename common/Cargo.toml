@@ -7,3 +7,6 @@ edition = "2018"
 defmt = "0.2.2"
 serde = { version = "1.0.126", default-features = false }
 serde_derive = "1.0.126"
+
+[dev-dependencies]
+postcard = { version = "0.7.0", features = ["use-std"] }
