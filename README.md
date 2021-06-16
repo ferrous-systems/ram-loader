@@ -216,6 +216,7 @@ enum Target2HostMessage {
 
 ## Nice to have & cleanups
 
+- serial communication on Windows is pretty slow: 1s per exchanged/roundtrip serial port message
 - fix bug in flip-link and use flip-link in `ram-loader` FW
 - add error message to `host-tool` for `InvalidAddress` response
 - make `payload_size` larger
