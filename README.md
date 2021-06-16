@@ -222,6 +222,4 @@ enum Target2HostMessage {
 - use `defmt` in `app` FW
 - refactor `ram-loader` `main` into subfunctions
 - LED indicator that ramloader is waiting for a new program
-- clean up / remove debug statements (or put them behind env_logger)
-- `host-tool` better argument handling (maybe use `clap` / `structopt`)
-- add explanatory comments to the code
+- `host-tool` better argument handling (maybe use `clap` / `structopt`)- add explanatory comments to the code
