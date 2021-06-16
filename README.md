@@ -211,6 +211,7 @@ enum Target2HostMessage {
 
 ## TODOs
 
+- open serial port using PID:VID pair
 - create blanks, skeleton project, instructions
 - NOTE that board must be reset to flash a new program
 
@@ -223,3 +224,4 @@ enum Target2HostMessage {
 - refactor `ram-loader` `main` into subfunctions
 - LED indicator that ramloader is waiting for a new program
 - clean up / remove debug statements (or put them behind env_logger)
+- `host-tool` better argument handling (maybe use `clap` / `structopt`)
