@@ -51,8 +51,6 @@ fn main() -> ! {
                 postcard::from_bytes_cobs(&mut cobs_buffer).unwrap();
 
             let response = match host2target_message {
-                Host2TargetMessage::Ping => Target2HostMessage::Pong,
-
                 Host2TargetMessage::Write {
                     start_address,
                     data,
