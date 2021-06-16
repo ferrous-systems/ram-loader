@@ -10,7 +10,7 @@ use ramloader as _; // global logger + panicking-behavior + memory layout
 
 const RAM_PROGRAM_START_ADDRESS: u32 = 0x2002_0000;
 const RAM_PROGRAM_END_ADDRESS: u32 = 0x2004_0000;
-const VALID_RAM_PROGRAM_ADDRESS: Range<u32> = RAM_PROGRAM_START_ADDRESS..0x2000_0000;
+const VALID_RAM_PROGRAM_ADDRESS: Range<u32> = RAM_PROGRAM_START_ADDRESS..RAM_PROGRAM_END_ADDRESS;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -61,10 +61,17 @@ fn main() -> ! {
 
                 Host2TargetMessage::Write {
                     start_address,
-                    data: _,
+                    data,
                 } => {
                     if VALID_RAM_PROGRAM_ADDRESS.contains(&start_address) {
-                        // TODO write `data` to RAM
+                        let src = data.as_ptr();
+                        let dst = start_address as usize as *mut u8;
+                        let len = data.len();
+
+                        defmt::dbg!(src, dst, len);
+                        unsafe {
+                            core::ptr::copy_nonoverlapping(src, dst, len);
+                        }
                         Target2HostMessage::WriteOk
                     } else {
                         defmt::error!("address `{}` is invalid", start_address);

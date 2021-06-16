@@ -31,33 +31,23 @@ fn main() -> color_eyre::Result<()> {
     let segments = extract_loadable_segments(file_path)?;
 
     let mut conn = TargetConn::new()?;
-    // for segment in &segments {
-    //     let mut start_address = segment.start_address;
-    //     for chunk in segment.data.chunks(common::POSTCARD_PAYLOAD_SIZE) {
-    //         let message = Host2TargetMessage::Write {
-    //             start_address,
-    //             data: chunk,
-    //         };
-    //         start_address += chunk.len() as u32;
+    for segment in &segments {
+        let mut start_address = segment.start_address;
+        for chunk in segment.data.chunks(common::POSTCARD_PAYLOAD_SIZE) {
+            let message = Host2TargetMessage::Write {
+                start_address,
+                data: chunk,
+            };
+            start_address += chunk.len() as u32;
 
-    //         let response = conn.request(message)?;
+            let response = conn.request(message)?;
 
-    //         assert_eq!(response, Target2HostMessage::WriteOk);
+            assert_eq!(response, Target2HostMessage::WriteOk);
+        }
+    }
 
-    //         dbg!(segment);
-    //     }
-    // }
-
-    let message = Host2TargetMessage::Write {
-        start_address: 0x0000_0000,
-        data: &[1],
-    };
-
-    let response = conn.request(message)?;
+    let response = conn.request(Host2TargetMessage::Ping)?;
     dbg!(response);
-
-    // let response = conn.request(Host2TargetMessage::Ping)?;
-    // dbg!(response);
 
     Ok(())
 }
@@ -114,7 +104,6 @@ impl TargetConn {
 
     fn request(&mut self, request: Host2TargetMessage) -> color_eyre::Result<Target2HostMessage> {
         let request_bytes = postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&request)?;
-        dbg!(&request_bytes[..std::cmp::min(7, request_bytes.len())]);
         dbg!(request_bytes.len());
 
         self.writer.write_all(&request_bytes)?;
