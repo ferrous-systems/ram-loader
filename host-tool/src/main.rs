@@ -5,10 +5,10 @@ use std::{
     time::Duration,
 };
 
-use color_eyre::eyre::eyre;
+use color_eyre::eyre::{ensure, eyre};
 use common::{Host2TargetMessage, Target2HostMessage};
 use object::{
-    elf::{FileHeader32, PT_LOAD},
+    elf::{self, FileHeader32},
     read::elf::{FileHeader, ProgramHeader},
     Endianness,
 };
@@ -19,7 +19,7 @@ const TIMEOUT: Duration = Duration::from_secs(5);
 const BAUD_RATE: u32 = 115_200;
 
 fn main() -> color_eyre::Result<()> {
-    // TODO doesn't reject 2+ arguments
+    // TODO this should reject 2+ arguments
     let file_path = PathBuf::from(
         env::args()
             .nth(1)
@@ -30,7 +30,7 @@ fn main() -> color_eyre::Result<()> {
 
     let segments = extract_loadable_segments(file_path)?;
 
-    let mut conn = TargetConn::new()?;
+    let mut conn = TargetConn::open()?;
     for segment in &segments {
         let mut start_address = segment.start_address;
         for chunk in segment.data.chunks(common::POSTCARD_PAYLOAD_SIZE) {
@@ -42,8 +42,10 @@ fn main() -> color_eyre::Result<()> {
 
             let response = conn.request_response(message)?;
 
-            // TODO emit error message (specially for invalid address)
-            assert_eq!(response, Target2HostMessage::WriteOk);
+            ensure!(
+                response == Target2HostMessage::WriteOk,
+                "write operation failed"
+            );
 
             // rudimentary progress indicator
             print!(".");
@@ -64,6 +66,12 @@ struct Segment {
     data: Vec<u8>,
 }
 
+/// Extracts loadable segments from the ELF
+///
+/// Most of these will map to linker sections like `.text` and `.rodata`
+/// For `.data`, a section whose *Virtual* memory address is different than its *Load* / *Physical*,
+///  this returns the *physical* memory address
+// no high level API for this in the `object` crate. the `probe-rs` crate does something similar
 fn extract_loadable_segments(file_path: PathBuf) -> Result<Vec<Segment>, color_eyre::Report> {
     let bytes = fs::read(file_path)?;
     let file_header = FileHeader32::<Endianness>::parse(&*bytes)?;
@@ -73,7 +81,7 @@ fn extract_loadable_segments(file_path: PathBuf) -> Result<Vec<Segment>, color_e
     for program_header in file_header.program_headers(endianness, &*bytes)? {
         let p_type = program_header.p_type(endianness);
 
-        if p_type == PT_LOAD {
+        if p_type == elf::PT_LOAD {
             let p_paddr = program_header.p_paddr(endianness);
             let data = program_header
                 .data(endianness, &*bytes)
@@ -89,14 +97,15 @@ fn extract_loadable_segments(file_path: PathBuf) -> Result<Vec<Segment>, color_e
     Ok(segments)
 }
 
+/// A connection to a nRF52840 Development Kit running the `ramloader` firmware
 struct TargetConn {
     reader: BufReader<Box<dyn SerialPort>>,
     writer: Box<dyn SerialPort>,
 }
 
 impl TargetConn {
-    fn new() -> color_eyre::Result<Self> {
-        // TODO use VID PID to find correct port
+    /// Opens a connection to the `ramloader` "target"
+    fn open() -> color_eyre::Result<Self> {
         const VID: u16 = 0x1366;
         const PID: u16 = 0x1015;
 
@@ -123,6 +132,7 @@ impl TargetConn {
         Ok(Self { writer, reader })
     }
 
+    /// Sends request and waits for a response
     fn request_response(
         &mut self,
         request: Host2TargetMessage,
@@ -137,6 +147,7 @@ impl TargetConn {
         Ok(response)
     }
 
+    /// Sends a request but does not wait for a response
     fn send(&mut self, request: Host2TargetMessage) -> color_eyre::Result<()> {
         let request_bytes = postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&request)?;
 
