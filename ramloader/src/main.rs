@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-use core::ops::Range;
+use core::ops::RangeInclusive;
 
 use common::{Host2TargetMessage, Target2HostMessage};
 use heapless::Vec;
@@ -10,7 +10,8 @@ use ramloader as _; // global logger + panicking-behavior + memory layout
 
 const RAM_PROGRAM_START_ADDRESS: u32 = 0x2002_0000;
 const RAM_PROGRAM_END_ADDRESS: u32 = 0x2004_0000;
-const VALID_RAM_PROGRAM_ADDRESS: Range<u32> = RAM_PROGRAM_START_ADDRESS..RAM_PROGRAM_END_ADDRESS;
+const VALID_RAM_PROGRAM_ADDRESS: RangeInclusive<u32> =
+    RAM_PROGRAM_START_ADDRESS..=RAM_PROGRAM_END_ADDRESS;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -56,14 +57,29 @@ fn main() -> ! {
                     data,
                 } => {
                     if VALID_RAM_PROGRAM_ADDRESS.contains(&start_address) {
-                        let src = data.as_ptr();
-                        let dst = start_address as usize as *mut u8;
-                        let len = data.len();
+                        if data.len() != 0 {
+                            let end_address = start_address + data.len() as u32;
+                            if VALID_RAM_PROGRAM_ADDRESS.contains(&end_address) {
+                                let src = data.as_ptr();
+                                let dst = start_address as usize as *mut u8;
+                                let len = data.len();
 
-                        unsafe {
-                            core::ptr::copy_nonoverlapping(src, dst, len);
+                                unsafe {
+                                    core::ptr::copy_nonoverlapping(src, dst, len);
+                                }
+
+                                Target2HostMessage::WriteOk
+                            } else {
+                                defmt::error!(
+                                    "address range `{}..{}` is invalid",
+                                    start_address,
+                                    end_address
+                                );
+                                Target2HostMessage::InvalidAddress
+                            }
+                        } else {
+                            Target2HostMessage::WriteOk
                         }
-                        Target2HostMessage::WriteOk
                     } else {
                         defmt::error!("address `{}` is invalid", start_address);
                         Target2HostMessage::InvalidAddress
@@ -92,4 +108,3 @@ fn main() -> ! {
         }
     }
 }
-
