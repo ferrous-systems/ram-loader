@@ -5,7 +5,10 @@ use core::ops::RangeInclusive;
 
 use common::{Host2TargetMessage, Target2HostMessage};
 use heapless::Vec;
-use nrf52840_hal::{gpio, uarte, Uarte};
+use nrf52840_hal::{
+    gpio::{self, p0, Level},
+    uarte, Uarte,
+};
 use ramloader as _; // global logger + panicking-behavior + memory layout
 
 const RAM_PROGRAM_START_ADDRESS: u32 = 0x2002_0000;
@@ -15,24 +18,27 @@ const VALID_RAM_PROGRAM_ADDRESS: RangeInclusive<u32> =
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    let core_periphals = cortex_m::Peripherals::take().unwrap();
-    let p = nrf52840_hal::pac::Peripherals::take().unwrap();
+    let core_peripherals = cortex_m::Peripherals::take().unwrap();
+    let nrf_peripherals = nrf52840_hal::pac::Peripherals::take().unwrap();
 
-    let (uart0, cdc_pins) = {
-        let p0 = gpio::p0::Parts::new(p.P0);
-        (
-            p.UARTE0,
-            uarte::Pins {
-                txd: p0.p0_06.into_push_pull_output(gpio::Level::High).degrade(),
-                rxd: p0.p0_08.into_floating_input().degrade(),
-                cts: None,
-                rts: None,
-            },
-        )
+    let port0_pins = p0::Parts::new(nrf_peripherals.P0);
+    // turn on some LEDs as a visual indicator
+    port0_pins.p0_14.into_push_pull_output(Level::Low);
+    port0_pins.p0_15.into_push_pull_output(Level::Low);
+    port0_pins.p0_16.into_push_pull_output(Level::Low);
+
+    let cdc_pins = uarte::Pins {
+        txd: port0_pins
+            .p0_06
+            .into_push_pull_output(gpio::Level::High)
+            .degrade(),
+        rxd: port0_pins.p0_08.into_floating_input().degrade(),
+        cts: None,
+        rts: None,
     };
 
     let mut uarte = Uarte::new(
-        uart0,
+        nrf_peripherals.UARTE0,
         cdc_pins,
         uarte::Parity::EXCLUDED,
         uarte::Baudrate::BAUD115200,
@@ -91,7 +97,7 @@ fn main() -> ! {
 
                     // write to VTOR
                     unsafe {
-                        core_periphals.SCB.vtor.write(RAM_PROGRAM_START_ADDRESS);
+                        core_peripherals.SCB.vtor.write(RAM_PROGRAM_START_ADDRESS);
                     }
 
                     // flush defmt messages
