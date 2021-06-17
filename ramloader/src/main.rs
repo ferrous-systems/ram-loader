@@ -10,9 +10,10 @@ use nrf52840_hal::{
     gpio::{
         self,
         p0::{self, P0_06, P0_08, P0_14, P0_15, P0_16},
-        Disconnected, Level,
+        Disconnected, Level, Output, PushPull,
     },
     pac::UARTE0,
+    prelude::*,
     uarte, Uarte,
 };
 use ramloader as _; // global logger + panicking-behavior + memory layout
@@ -28,7 +29,7 @@ fn main() -> ! {
     let nrf_peripherals = nrf52840_hal::pac::Peripherals::take().unwrap();
 
     let port0_pins = p0::Parts::new(nrf_peripherals.P0);
-    visual_indicator(port0_pins.p0_14, port0_pins.p0_15, port0_pins.p0_16);
+    let mut visual_indicator = Leds::on(port0_pins.p0_14, port0_pins.p0_15, port0_pins.p0_16);
 
     let mut serial_port =
         initialize_serial_port(port0_pins.p0_06, port0_pins.p0_08, nrf_peripherals.UARTE0);
@@ -46,7 +47,7 @@ fn main() -> ! {
             let request: Host2TargetMessage =
                 postcard::from_bytes_cobs(&mut postcard_buffer).unwrap();
 
-            let response = handle_request(request, &core_peripherals.SCB);
+            let response = handle_request(request, &core_peripherals.SCB, &mut visual_indicator);
             let response_bytes =
                 postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&response).unwrap();
 
@@ -56,7 +57,11 @@ fn main() -> ! {
     }
 }
 
-fn handle_request(request: Host2TargetMessage, scb: &SCB) -> Target2HostMessage {
+fn handle_request(
+    request: Host2TargetMessage,
+    scb: &SCB,
+    visual_indicator: &mut Leds,
+) -> Target2HostMessage {
     match request {
         Host2TargetMessage::Write {
             start_address,
@@ -87,6 +92,8 @@ fn handle_request(request: Host2TargetMessage, scb: &SCB) -> Target2HostMessage 
 
             // point VTOR to new vector table
             unsafe { scb.vtor.write(RAM_PROGRAM_START_ADDRESS) }
+
+            visual_indicator.off();
 
             // flush defmt messages
             cortex_m::asm::delay(1_000_000);
@@ -121,12 +128,28 @@ fn initialize_serial_port(
     )
 }
 
-fn visual_indicator(
-    p0_14: P0_14<Disconnected>,
-    p0_15: P0_15<Disconnected>,
-    p0_16: P0_16<Disconnected>,
-) {
-    p0_14.into_push_pull_output(Level::Low);
-    p0_15.into_push_pull_output(Level::Low);
-    p0_16.into_push_pull_output(Level::Low);
+struct Leds {
+    p0_14: P0_14<Output<PushPull>>,
+    p0_15: P0_15<Output<PushPull>>,
+    p0_16: P0_16<Output<PushPull>>,
+}
+
+impl Leds {
+    fn on(
+        p0_14: P0_14<Disconnected>,
+        p0_15: P0_15<Disconnected>,
+        p0_16: P0_16<Disconnected>,
+    ) -> Self {
+        Self {
+            p0_14: p0_14.into_push_pull_output(Level::Low),
+            p0_15: p0_15.into_push_pull_output(Level::Low),
+            p0_16: p0_16.into_push_pull_output(Level::Low),
+        }
+    }
+
+    fn off(&mut self) {
+        self.p0_14.set_high().unwrap();
+        self.p0_15.set_high().unwrap();
+        self.p0_16.set_high().unwrap();
+    }
 }
