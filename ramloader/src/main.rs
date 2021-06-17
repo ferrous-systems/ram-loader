@@ -29,7 +29,7 @@ fn main() -> ! {
     let nrf_peripherals = nrf52840_hal::pac::Peripherals::take().unwrap();
 
     let port0_pins = p0::Parts::new(nrf_peripherals.P0);
-    let mut visual_indicator = Leds::on(port0_pins.p0_14, port0_pins.p0_15, port0_pins.p0_16);
+    let mut leds = Leds::on(port0_pins.p0_14, port0_pins.p0_15, port0_pins.p0_16);
 
     let mut serial_port =
         initialize_serial_port(port0_pins.p0_06, port0_pins.p0_08, nrf_peripherals.UARTE0);
@@ -47,7 +47,7 @@ fn main() -> ! {
             let request: Host2TargetMessage =
                 postcard::from_bytes_cobs(&mut postcard_buffer).unwrap();
 
-            let response = handle_request(request, &core_peripherals.SCB, &mut visual_indicator);
+            let response = handle_request(request, &core_peripherals.SCB, &mut leds);
             let response_bytes =
                 postcard::to_vec_cobs::<_, { common::POSTCARD_BUFFER_SIZE }>(&response).unwrap();
 
@@ -57,11 +57,7 @@ fn main() -> ! {
     }
 }
 
-fn handle_request(
-    request: Host2TargetMessage,
-    scb: &SCB,
-    visual_indicator: &mut Leds,
-) -> Target2HostMessage {
+fn handle_request(request: Host2TargetMessage, scb: &SCB, leds: &mut Leds) -> Target2HostMessage {
     match request {
         Host2TargetMessage::Write {
             start_address,
@@ -93,7 +89,7 @@ fn handle_request(
             // point VTOR to new vector table
             unsafe { scb.vtor.write(RAM_PROGRAM_START_ADDRESS) }
 
-            visual_indicator.off();
+            leds.off();
 
             // flush defmt messages
             cortex_m::asm::delay(1_000_000);
